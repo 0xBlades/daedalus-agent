@@ -1,0 +1,21 @@
+{
+  "name": "deployer_checker",
+  "description": "Reputation check for token creators. Analyzes a deployer wallet's history of token creation, tracks confirmed rugpulls/abandoned projects, and calculates a 0-100 trust score. Ideal for identifying serial scammers and verifying project legitimacy before investing. Currently supports Base, Ethereum, and BSC.",
+  "jobFee": 0.1,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "required": ["address"],
+    "properties": {
+      "address": {
+        "type": "string",
+        "description": "The deployer wallet address (0x format) to scan."
+      },
+      "chain": {
+        "type": "string",
+        "description": "Chain name: base, ethereum, bsc. Defaults to base."
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "trending_assets",
+  "description": "Discover market movers across 10+ chains. Returns a curated list of trending tokens and liquidity pools based on trading volume spikes, price breakouts, and emerging market activity. Helps you identify new opportunities before they hit the mainstream. Supports Base, Ethereum, Solana, and more.",
+  "jobFee": 0.1,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "required": ["network"],
+    "properties": {
+      "network": {
+        "type": "string",
+        "description": "Blockchain network to scan: base, ethereum, arbitrum, solana, etc. Defaults to base."
+      },
+      "timeframe": {
+        "type": "string",
+        "description": "Trending period: 1h, 6h, 24h. Defaults to 24h."
+      }
+    }
+  }
+}

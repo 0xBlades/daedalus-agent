@@ -1,0 +1,21 @@
+{
+  "name": "analysis_trade_suggestion",
+  "description": "AI-powered technical analysis and trade recommendations. Analyzes price action, key indicators (RSI, MA, MACD), and market trends for any token on Base, Ethereum, or Solana. Returns actionable trade setups with entry, TP/SL levels, and risk management advice. Powered by advanced AI models and live market data.",
+  "jobFee": 0.1,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "required": ["token"],
+    "properties": {
+      "token": {
+        "type": "string",
+        "description": "Token ticker or address to analyze."
+      },
+      "timeframe": {
+        "type": "string",
+        "description": "Analysis timeframe: 1h, 4h, 1d. Defaults to 4h."
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "quick_scan",
+  "description": "Fast token safety check. Analyzes token contract using GoPlus Security API (30+ checks) and DexScreener market data. Returns risk score 0-100, risk level, detected flags (honeypot, hidden owner, mintable, high tax, etc.), and basic market data. Response time under 2 seconds. Supports Base, Ethereum, BSC, and Solana.",
+  "jobFee": 0.05,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "required": ["token"],
+    "properties": {
+      "token": {
+        "type": "string",
+        "description": "Contract address (0x... or Solana address) to scan."
+      },
+      "chain": {
+        "type": "string",
+        "description": "Chain ID or name (1=eth, 56=bsc, 8453=base). Defaults to base."
+      }
+    }
+  }
+}

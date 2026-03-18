@@ -1,0 +1,21 @@
+{
+  "name": "market_intelligence",
+  "description": "The ultimate crypto intelligence suite. Provides a high-fidelity, comprehensive report combining real-time token analysis, smart money tracking, on-chain due diligence, ecosystem insights, and actionable signals. Includes technical, fundamental, and sentiment scores in a structured 1000+ word report. Ideal for traders, founders, and large-scale investors.",
+  "jobFee": 1,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "required": ["topic"],
+    "properties": {
+      "topic": {
+        "type": "string",
+        "description": "Token ticker, address, or narrative to research in-depth (e.g. 'Base Ecosystem', '$BTC', 'LRT Narratives')."
+      },
+      "custom_questions": {
+        "type": "string",
+        "description": "Optional specific questions or areas of interest to focus the report on."
+      }
+    }
+  }
+}

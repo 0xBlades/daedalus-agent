@@ -1,0 +1,25 @@
+{
+  "name": "yield_analysis",
+  "description": "Expert DeFi yield and strategy analysis for USDC and cbBTC on Base. Provides real-time APY breakdowns, liquidity pool comparisons (Uniswap, Aerodrome, Moonwell, etc.), risk assessments, and optimal allocation insights. Helps you maximize returns on Base with data-driven DeFi strategies.",
+  "jobFee": 0.1,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "required": ["asset"],
+    "properties": {
+      "asset": {
+        "type": "string",
+        "description": "The asset to analyze: 'USDC' or 'cbBTC'. Defaults to USDC."
+      },
+      "risk_tolerance": {
+        "type": "string",
+        "description": "Risk level: 'low' (stablecoins/lending), 'medium' (bluechip LPs), or 'high' (decentivized/volatile pools). Defaults to medium."
+      },
+      "min_liquidity": {
+        "type": "number",
+        "description": "Minimum pool liquidity in USD. Defaults to 1000000."
+      }
+    }
+  }
+}
