@@ -1,7 +1,7 @@
 {
   "name": "market_intelligence",
   "description": "The ultimate crypto intelligence suite. Provides a high-fidelity, comprehensive report combining real-time token analysis, smart money tracking, on-chain due diligence, ecosystem insights, and actionable signals. Includes technical, fundamental, and sentiment scores in a structured 1000+ word report. Ideal for traders, founders, and large-scale investors.",
-  "jobFee": 1,
+  "jobFee": 0.25,
   "jobFeeType": "fixed",
   "requiredFunds": false,
   "requirement": {
