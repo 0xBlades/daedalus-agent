@@ -1,5 +1,18 @@
 import type { ExecuteJobResult, ValidationResult } from "../../../runtime/offeringTypes.js";
 
+async function fetchTxHistory(address: string, chain: string, apiKey: string) {
+  const baseUrl = chain === "base" ? "https://api.basescan.org/api" : 
+                  chain === "bsc" ? "https://api.bscscan.com/api" : 
+                  "https://api.etherscan.io/api";
+  
+  try {
+    const res = await fetch(`${baseUrl}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=50&sort=desc&apikey=${apiKey}`);
+    const data = await res.json() as any;
+    if (data.status !== "1") return [];
+    return data.result || [];
+  } catch (e) { return []; }
+}
+
 async function callOpenRouter(prompt: string): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   const model = process.env.OPENROUTER_MODEL || "anthropic/claude-3.5-haiku";
@@ -12,7 +25,7 @@ async function callOpenRouter(prompt: string): Promise<string> {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
       "HTTP-Referer": "https://virtuals.io",
-      "X-Title": "Daedalus AI Sybil Check",
+      "X-Title": "Daedalus AI Sybil Forensic",
     },
     body: JSON.stringify({
       model,
@@ -31,50 +44,68 @@ async function callOpenRouter(prompt: string): Promise<string> {
 }
 
 function buildPrompt(address: string, chain: string, txs: any[]): string {
+  const txSummary = txs.length > 0 ? txs.map(t => ({
+    method: t.functionName || "transfer",
+    to: t.to,
+    value: (parseInt(t.value) / 1e18).toFixed(4),
+    time: new Date(t.timeStamp * 1000).toISOString()
+  })).slice(0, 30) : "No transactions found.";
+
   return `You are Daedalus AI — On-Chain Forensic Analyst.
 Wallet: **${address}** on **${chain}**
-Recent Transactions: ${JSON.stringify(txs)}
+Recent Data: ${JSON.stringify(txSummary)}
 
-Analyze for Sybil/Bot behavior. Format:
-# 🕵️ Sybil Check: ${address}
-**Risk Score: [0-100]** (0 = Human, 100 = Bot/Sybil)
+Perform a deep forensic analysis for Sybil or Bot behavior:
+- Look for repetitive timing between transactions.
+- Check for "fund and discard" patterns.
+- Look for air-drop farming signatures.
+- Analyze contract interactions.
 
-## 📊 Pattern Analysis
-Describe the behavior (AirDrop farming patterns, repetitive txs, cluster links, etc.).
+Format:
+# 🕵️ Sybil Forensic: ${address.slice(0, 10)}...
+**Risk Score: [0-100]** (0=Human, 100=Bot/Cluster)
+
+## 📊 Behavioral Patterns
+Analyze the transaction timing, types, and fund flows.
+
+## 🔗 Transaction Evidence
+Highlight specific transactions that look automated or suspicious.
 
 ## 🏛️ Forensic Verdict
-Is this a genuine user or a programmed sybil? Provide reasoning.
+Final decision: Is this a human user or a sybil bot?
 
-⚠️ Disclaimer: Not financial advice. Always verify with specialized tools.`;
+⚠️ Disclaimer: Not financial advice. Always verify with multiple tools.`;
 }
 
 export async function executeJob(request: any): Promise<ExecuteJobResult> {
-  // Support both 'address' and 'wallet' for maximum compatibility
-  const address = request.address || request.wallet;
-  const chain = request.chain || "ethereum";
+  const address = (request.address || request.wallet).trim().toLowerCase();
+  const chain = request.chain || "base";
+  const explorerKey = process.env.ETHERSCAN_API_KEY;
 
-  console.log(`[sybil_wallet_checker] Checking ${address} on ${chain}`);
-
-  if (!address) {
-    return { deliverable: "⚠️ Error: A wallet address is required for this check." };
-  }
+  console.log(`[sybil_wallet_checker] Deep forensic for ${address} on ${chain}`);
 
   try {
-    const deliverable = await callOpenRouter(buildPrompt(address, chain, []));
+    let txs = [];
+    if (explorerKey) {
+      txs = await fetchTxHistory(address, chain, explorerKey);
+    }
+
+    const deliverable = await callOpenRouter(buildPrompt(address, chain, txs));
     return { deliverable };
   } catch (err: any) {
     console.error(`[sybil_wallet_checker] Error: ${err.message}`);
-    return { deliverable: `⚠️ AI Analysis Error: ${err.message}` };
+    return { deliverable: `⚠️ Error: ${err.message}` };
   }
 }
 
 export function validateRequirements(request: any): ValidationResult {
-  if (!request.address && !request.wallet) {
-    return { valid: false, reason: "A wallet address is required (EVM or Solana format)." };
+  const address = request.address || request.wallet;
+  if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+    return { valid: false, reason: "A valid EVM wallet address (0x...) is required." };
   }
   return { valid: true };
 }
 
 export function requestPayment(request: any): string {
-  return `Running sybil forensic check for ${request.address || request.wallet}...`;
+  return `Performing deep on-chain forensic check for ${request.address || request.wallet}...`;
 }
