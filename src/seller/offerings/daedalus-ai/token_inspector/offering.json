@@ -1,6 +1,6 @@
 {
   "name": "token_inspector",
-  "description": "Comprehensive token intelligence. Retrieves name, symbol, price, market cap, volume, and security metadata for any token ticker or contract address. Supports Base, Ethereum, Solana, and 10+ EVM chains. Validates asset existence and returns detailed data points.",
+  "description": "Comprehensive token intelligence. Retrieves name, symbol, price, market cap, volume, and security metadata for any token. **IMPORTANT: Provide the Contract Address (0x...) for the most accurate results.** Supports Base, Ethereum, Solana, and 10+ EVM chains.",
   "jobFee": 0.05,
   "jobFeeType": "fixed",
   "requiredFunds": false,
@@ -10,11 +10,11 @@
     "properties": {
       "token": {
         "type": "string",
-        "description": "Token ticker (e.g. $ETH, $SOL) or contract address (0x... or base58)."
+        "description": "Contract address (0x... or Solana address) preferred. Tickers are also supported but less accurate."
       },
       "network": {
         "type": "string",
-        "description": "Blockchain network. Defaults to 'base'. Supported: base, ethereum, arbitrum, polygon, solana, etc."
+        "description": "Blockchain network. Defaults to 'base'."
       }
     }
   }

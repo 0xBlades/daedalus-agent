@@ -2,9 +2,23 @@ import type { ExecuteJobResult, ValidationResult } from "../../../runtime/offeri
 
 async function getDexScreenerData(token: string) {
   try {
-    const res = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${token}`);
+    // 1. If it looks like an EVM address (0x...) or Solana address (typically 32-44 base58 chars)
+    const isAddress = token.startsWith("0x") || token.length >= 32;
+    
+    if (isAddress) {
+      // Use the specific token endpoint for higher precision
+      const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${token}`);
+      const data = await res.json() as any;
+      if (data.pairs && data.pairs.length > 0) {
+        // Return the pair with the highest liquidity
+        return data.pairs.sort((a: any, b: any) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0))[0];
+      }
+    }
+
+    // 2. Fallback or ticker search
+    const cleanToken = token.startsWith("$") ? token.substring(1) : token;
+    const res = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${cleanToken}`);
     const data = await res.json() as any;
-    // Get first result that matches best
     return data.pairs?.[0] || null;
   } catch (e) {
     return null;
@@ -12,14 +26,14 @@ async function getDexScreenerData(token: string) {
 }
 
 export async function executeJob(request: any): Promise<ExecuteJobResult> {
-  const token = request.token;
+  const token = request.token.trim();
   const network = request.network || "base";
 
-  console.log(`[token_inspector] Inspecting ${token} on ${network}`);
+  console.log(`[token_inspector] Ingenious Inspecting ${token} on ${network}`);
 
   const pair = await getDexScreenerData(token);
   if (!pair) {
-    return { deliverable: `Error: Could not find token ${token} on DexScreener. Please verify the ticker or contract address.` };
+    return { deliverable: `Error: Could not find token data for "${token}" on DexScreener. \n\n💡 Tip: Please use the **Contract Address** (0x...) instead of the ticker for guaranteed results.` };
   }
 
   const deliverable = `
@@ -50,7 +64,7 @@ export async function executeJob(request: any): Promise<ExecuteJobResult> {
 }
 
 export function validateRequirements(request: any): ValidationResult {
-  if (!request.token) return { valid: false, reason: "A 'token' ticker or address is required." };
+  if (!request.token) return { valid: false, reason: "A token contract address (preferred) or ticker is required." };
   return { valid: true };
 }
 
