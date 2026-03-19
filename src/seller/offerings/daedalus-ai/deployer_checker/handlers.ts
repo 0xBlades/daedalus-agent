@@ -18,7 +18,7 @@ async function fetchDeployments(address: string, chain: string, apiKey: string) 
 export async function executeJob(request: any): Promise<ExecuteJobResult> {
   const address = request.address.trim().toLowerCase();
   const chain = request.chain || "base";
-  const apiKey = process.env.ETHERSCAN_API_KEY;
+  const apiKey = process.env.ETHERSCAN_API_KEY || process.env.BASESCAN_API_KEY || process.env.EXPLORER_API_KEY;
 
   if (!apiKey) return { deliverable: "Error: ETHERSCAN_API_KEY not set." };
 

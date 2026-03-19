@@ -6,11 +6,20 @@ async function fetchTxHistory(address: string, chain: string, apiKey: string) {
                   "https://api.etherscan.io/api";
   
   try {
-    const res = await fetch(`${baseUrl}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=50&sort=desc&apikey=${apiKey}`);
+    const url = `${baseUrl}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=50&sort=desc&apikey=${apiKey}`;
+    const res = await fetch(url);
     const data = await res.json() as any;
-    if (data.status !== "1") return [];
+    
+    if (data.status !== "1") {
+      console.error(`[sybil_wallet_checker] Explorer API Error: ${data.message} | Result: ${data.result}`);
+      return [];
+    }
+    
     return data.result || [];
-  } catch (e) { return []; }
+  } catch (e: any) { 
+    console.error(`[sybil_wallet_checker] Fetch Exception: ${e.message}`);
+    return []; 
+  }
 }
 
 async function callOpenRouter(prompt: string): Promise<string> {
@@ -45,49 +54,55 @@ async function callOpenRouter(prompt: string): Promise<string> {
 
 function buildPrompt(address: string, chain: string, txs: any[]): string {
   const txSummary = txs.length > 0 ? txs.map(t => ({
-    method: t.functionName || "transfer",
+    method: t.functionName ? t.functionName.split("(")[0] : (t.input === "0x" ? "transfer" : "contract_call"),
     to: t.to,
     value: (parseInt(t.value) / 1e18).toFixed(4),
     time: new Date(t.timeStamp * 1000).toISOString()
-  })).slice(0, 30) : "No transactions found.";
+  })).slice(0, 30) : "No transactions found in this specific search.";
 
   return `You are Daedalus AI — On-Chain Forensic Analyst.
 Wallet: **${address}** on **${chain}**
-Recent Data: ${JSON.stringify(txSummary)}
+Recent Activity Data (last 30 txs): ${txs.length > 0 ? JSON.stringify(txSummary) : "No data provided."}
 
-Perform a deep forensic analysis for Sybil or Bot behavior:
-- Look for repetitive timing between transactions.
-- Check for "fund and discard" patterns.
-- Look for air-drop farming signatures.
-- Analyze contract interactions.
+Analyze for Sybil/Bot behavior:
+- Check for repetitive timing.
+- Look for multi-swap patterns (Uniswap, OKX, etc.).
+- Analyze if the wallet interacts with known infrastructure (Relay, Zerion, etc.).
+- Determine if the user is a Human, a Power User, or a Sybil Cluster.
 
 Format:
-# 🕵️ Sybil Forensic: ${address.slice(0, 10)}...
+# 🕵️ Sybil Forensic: ${address}
 **Risk Score: [0-100]** (0=Human, 100=Bot/Cluster)
 
 ## 📊 Behavioral Patterns
 Analyze the transaction timing, types, and fund flows.
 
-## 🔗 Transaction Evidence
-Highlight specific transactions that look automated or suspicious.
+## 🔗 Forensic Findings
+Highlight key interactions (e.g., Uniswap swaps, protocol usage).
 
-## 🏛️ Forensic Verdict
-Final decision: Is this a human user or a sybil bot?
+## 🏛️ Verdict
+Detailed reasoning on whether this is a genuine user or a sybil bot.
 
-⚠️ Disclaimer: Not financial advice. Always verify with multiple tools.`;
+⚠️ Disclaimer: Not financial advice. Analyzes recent on-chain activity.`;
 }
 
 export async function executeJob(request: any): Promise<ExecuteJobResult> {
   const address = (request.address || request.wallet).trim().toLowerCase();
   const chain = request.chain || "base";
-  const explorerKey = process.env.ETHERSCAN_API_KEY;
+  
+  // Try multiple common Env names for the explorer key
+  const explorerKey = process.env.ETHERSCAN_API_KEY || process.env.BASESCAN_API_KEY || process.env.EXPLORER_API_KEY;
 
   console.log(`[sybil_wallet_checker] Deep forensic for ${address} on ${chain}`);
+  if (!explorerKey) {
+    console.warn("[sybil_wallet_checker] Warning: No Explorer API Key found in ENV.");
+  }
 
   try {
     let txs = [];
     if (explorerKey) {
       txs = await fetchTxHistory(address, chain, explorerKey);
+      console.log(`[sybil_wallet_checker] Fetched ${txs.length} transactions for ${address}`);
     }
 
     const deliverable = await callOpenRouter(buildPrompt(address, chain, txs));
