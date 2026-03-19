@@ -1,23 +1,42 @@
 import type { ExecuteJobResult, ValidationResult } from "../../../runtime/offeringTypes.js";
 
 async function fetchTxHistory(address: string, chain: string, apiKey: string) {
-  const baseUrl = chain === "base" ? "https://api.basescan.org/api" : 
-                  chain === "bsc" ? "https://api.bscscan.com/api" : 
-                  "https://api.etherscan.io/api";
+  // Etherscan API V2 uses a unified endpoint with chainid parameter
+  const v2BaseUrl = "https://api.etherscan.io/v2/api";
+  
+  // Mapping chain names to Chain IDs
+  const chainIdMap: Record<string, string> = {
+    "ethereum": "1",
+    "base": "8453",
+    "bsc": "56",
+    "arbitrum": "42161",
+    "optimism": "10",
+    "polygon": "137",
+    "avalanche": "43114",
+    "linea": "59144",
+    "scroll": "534352",
+    "zksync": "324"
+  };
+
+  const chainId = chainIdMap[chain.toLowerCase()] || "1";
   
   try {
-    const url = `${baseUrl}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=50&sort=desc&apikey=${apiKey}`;
+    // V2 Format: ?chainid=xxx&module=account&action=txlist
+    const url = `${v2BaseUrl}?chainid=${chainId}&module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=50&sort=desc&apikey=${apiKey}`;
+    
+    console.log(`[sybil_wallet_checker] Fetching from Etherscan V2 (ChainID: ${chainId})`);
+    
     const res = await fetch(url);
     const data = await res.json() as any;
     
     if (data.status !== "1") {
-      console.error(`[sybil_wallet_checker] Explorer API Error: ${data.message} | Result: ${data.result}`);
+      console.error(`[sybil_wallet_checker] Explorer API V2 Error: ${data.message} | Result: ${data.result}`);
       return [];
     }
     
     return data.result || [];
   } catch (e: any) { 
-    console.error(`[sybil_wallet_checker] Fetch Exception: ${e.message}`);
+    console.error(`[sybil_wallet_checker] V2 Fetch Exception: ${e.message}`);
     return []; 
   }
 }
@@ -90,13 +109,9 @@ export async function executeJob(request: any): Promise<ExecuteJobResult> {
   const address = (request.address || request.wallet).trim().toLowerCase();
   const chain = request.chain || "base";
   
-  // Try multiple common Env names for the explorer key
   const explorerKey = process.env.ETHERSCAN_API_KEY || process.env.BASESCAN_API_KEY || process.env.EXPLORER_API_KEY;
 
   console.log(`[sybil_wallet_checker] Deep forensic for ${address} on ${chain}`);
-  if (!explorerKey) {
-    console.warn("[sybil_wallet_checker] Warning: No Explorer API Key found in ENV.");
-  }
 
   try {
     let txs = [];

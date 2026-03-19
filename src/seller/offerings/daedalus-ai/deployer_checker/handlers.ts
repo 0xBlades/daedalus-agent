@@ -1,12 +1,20 @@
 import type { ExecuteJobResult, ValidationResult } from "../../../runtime/offeringTypes.js";
 
 async function fetchDeployments(address: string, chain: string, apiKey: string) {
-  const baseUrl = chain === "base" ? "https://api.basescan.org/api" : 
-                  chain === "bsc" ? "https://api.bscscan.com/api" : 
-                  "https://api.etherscan.io/api";
+  // Etherscan API V2 uses a unified endpoint
+  const v2BaseUrl = "https://api.etherscan.io/v2/api";
+  
+  const chainIdMap: Record<string, string> = {
+    "ethereum": "1",
+    "base": "8453",
+    "bsc": "56"
+  };
+
+  const chainId = chainIdMap[chain.toLowerCase()] || "8453";
   
   try {
-    const res = await fetch(`${baseUrl}?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${apiKey}`);
+    const url = `${v2BaseUrl}?chainid=${chainId}&module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=100&sort=desc&apikey=${apiKey}`;
+    const res = await fetch(url);
     const data = await res.json() as any;
     if (data.status !== "1") return [];
     
@@ -20,17 +28,16 @@ export async function executeJob(request: any): Promise<ExecuteJobResult> {
   const chain = request.chain || "base";
   const apiKey = process.env.ETHERSCAN_API_KEY || process.env.BASESCAN_API_KEY || process.env.EXPLORER_API_KEY;
 
-  if (!apiKey) return { deliverable: "Error: ETHERSCAN_API_KEY not set." };
+  if (!apiKey) return { deliverable: "Error: Explorer API Key (ETHERSCAN_API_KEY) not set in .env." };
 
-  console.log(`[deployer_checker] Checking reputation for ${address} on ${chain}`);
+  console.log(`[deployer_checker] Checking reputation for ${address} on ${chain} (V2 API)`);
 
   const deployments = await fetchDeployments(address, chain, apiKey);
   const deployCount = deployments.length;
   
-  // Basic heuristic
   let trustScore = 100;
-  if (deployCount === 0) trustScore = 50; // Unknown
-  else if (deployCount > 10) trustScore -= 20; // High frequency can be spammy
+  if (deployCount === 0) trustScore = 50; 
+  else if (deployCount > 10) trustScore -= 20; 
   
   const deliverable = `
 # 🕵️ Deployer Report: ${address.slice(0, 10)}...
@@ -48,7 +55,7 @@ ${trustScore >= 80 ? "✅ Clean track record found. High trust." :
   trustScore >= 50 ? "⚠️ Limited data or high volume. Exercise caution." : 
   "🚨 LOW TRUST. Multiple deployments with potential suspicious patterns."}
 
-*Analysis powered by Daedalus AI + ${chain} Explorer.*
+*Analysis powered by Daedalus AI + Etherscan V2.*
   `.trim();
 
   return { deliverable };
