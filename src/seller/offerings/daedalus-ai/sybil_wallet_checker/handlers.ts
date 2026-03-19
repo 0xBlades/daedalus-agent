@@ -36,43 +36,45 @@ Wallet: **${address}** on **${chain}**
 Recent Transactions: ${JSON.stringify(txs)}
 
 Analyze for Sybil/Bot behavior. Format:
-# 🕵️ Sybil Check: ${address.slice(0, 8)}...
+# 🕵️ Sybil Check: ${address}
 **Risk Score: [0-100]** (0 = Human, 100 = Bot/Sybil)
 
 ## 📊 Pattern Analysis
-Describe the behavior (AirDrop farming patterns, repetitive txs, etc.).
-
-## 🔗 Connection Graph
-Any links to known sybil clusters or funding patterns?
+Describe the behavior (AirDrop farming patterns, repetitive txs, cluster links, etc.).
 
 ## 🏛️ Forensic Verdict
-Is this a genuine user or a programmed sybil?
+Is this a genuine user or a programmed sybil? Provide reasoning.
 
-⚠️ Disclaimer: Not financial advice.`;
+⚠️ Disclaimer: Not financial advice. Always verify with specialized tools.`;
 }
 
 export async function executeJob(request: any): Promise<ExecuteJobResult> {
-  const address = request.address;
+  // Support both 'address' and 'wallet' for maximum compatibility
+  const address = request.address || request.wallet;
   const chain = request.chain || "ethereum";
 
-  console.log(`[sybil_wallet_checker] Checking ${address}`);
+  console.log(`[sybil_wallet_checker] Checking ${address} on ${chain}`);
+
+  if (!address) {
+    return { deliverable: "⚠️ Error: A wallet address is required for this check." };
+  }
 
   try {
-    // In a real scenario, we'd fetch actual tx data here. 
-    // For now, we use the address to simulate the AI check.
     const deliverable = await callOpenRouter(buildPrompt(address, chain, []));
     return { deliverable };
   } catch (err: any) {
     console.error(`[sybil_wallet_checker] Error: ${err.message}`);
-    return { deliverable: `⚠️ Error: ${err.message}` };
+    return { deliverable: `⚠️ AI Analysis Error: ${err.message}` };
   }
 }
 
 export function validateRequirements(request: any): ValidationResult {
-  if (!request.address) return { valid: false, reason: "A wallet address is required." };
+  if (!request.address && !request.wallet) {
+    return { valid: false, reason: "A wallet address is required (EVM or Solana format)." };
+  }
   return { valid: true };
 }
 
 export function requestPayment(request: any): string {
-  return `Running sybil forensic check for ${request.address}...`;
+  return `Running sybil forensic check for ${request.address || request.wallet}...`;
 }

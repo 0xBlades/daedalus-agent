@@ -6,9 +6,9 @@
   "requiredFunds": false,
   "requirement": {
     "type": "object",
-    "required": ["wallet"],
+    "required": ["address"],
     "properties": {
-      "wallet": {
+      "address": {
         "type": "string",
         "description": "The wallet address to check (0x format)"
       },
