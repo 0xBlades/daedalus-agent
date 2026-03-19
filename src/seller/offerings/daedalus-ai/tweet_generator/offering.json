@@ -1,0 +1,30 @@
+{
+  "name": "tweet_generator",
+  "description": "High-fidelity social media content architect. Generates professional, viral, or technical tweets based on your chosen topic and style. Includes AI-driven suggestions for optimal posting times based on crypto-market activity cycles.",
+  "jobFee": 0.1,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "required": ["topic", "style"],
+    "properties": {
+      "topic": {
+        "type": "string",
+        "description": "The main subject of the tweet (e.g. 'Bitcoin ETF', 'Base Ecosystem', 'AI Agents')"
+      },
+      "style": {
+        "type": "string",
+        "enum": ["Architectural (Deep)", "Viral (Engagement)", "Contrarian (Hot Take)", "Crypto Narrative (CT)", "Professional (Business)"],
+        "description": "The writing style for the tweet"
+      },
+      "context": {
+        "type": "string",
+        "description": "Optional: Additional context, specific points, or links to include"
+      },
+      "target_audience": {
+        "type": "string",
+        "description": "Optional: Who is this tweet for? (e.g. 'Degens', 'VCs', 'Builders')"
+      }
+    }
+  }
+}
