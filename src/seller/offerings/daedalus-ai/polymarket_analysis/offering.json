@@ -1,0 +1,25 @@
+{
+  "name": "polymarket_analysis",
+  "description": "Deep event analysis for Polymarket. Uses real-time search to compare market odds with real-world news and data. Provides a concise alpha thesis, mispricing score (0-100), and a clear Buy/Avoid verdict. Ideal for prediction market traders looking for a data-driven edge.",
+  "jobFee": 0.15,
+  "jobFeeType": "fixed",
+  "requiredFunds": false,
+  "requirement": {
+    "type": "object",
+    "required": ["event_name", "current_odds"],
+    "properties": {
+      "event_name": {
+        "type": "string",
+        "description": "The Polymarket event or topic (e.g. 'Will ETH hit $5k in March?')"
+      },
+      "current_odds": {
+        "type": "string",
+        "description": "The current market price/odds for the 'Yes' outcome (e.g. '20%' or '$0.20')"
+      },
+      "market_url": {
+        "type": "string",
+        "description": "Optional: Link to the specific Polymarket event"
+      }
+    }
+  }
+}
