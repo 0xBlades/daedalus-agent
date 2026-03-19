@@ -5,88 +5,89 @@ async function getDexScreenerData(token: string) {
     const res = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${token}`);
     const data = await res.json() as any;
     return data.pairs?.[0] || null;
-  } catch (e) { return null; }
+  } catch (e) {
+    return null;
+  }
 }
 
-function buildPrompt(data: any, timeframe: string): string {
-  return `You are Daedalus AI — an elite technical analyst and trade strategist.
+async function callOpenRouter(prompt: string): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  const model = process.env.OPENROUTER_MODEL || "anthropic/claude-3.5-haiku";
 
-Analyze the following market data for: **${data.baseToken.name} (${data.baseToken.symbol})**
-Timeframe: **${timeframe}**
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY is not set.");
 
-**Market Data (DexScreener):**
-- Current Price: $${data.priceUsd}
-- Price Change (1h/6h/24h): ${data.priceChange.h1}% / ${data.priceChange.h6}% / ${data.priceChange.h24}%
-- Volume (24h): $${data.volume.h24}
-- Liquidity: $${data.liquidity.usd}
-- Pair Age: ${data.pairCreatedAt}
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://virtuals.io",
+      "X-Title": "Daedalus AI Trade Suggestion",
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.1,
+    }),
+  });
 
-Provide a comprehensive trading analysis in the following format:
+  const data = await response.json() as any;
+  if (data.error) throw new Error(`OpenRouter Error: ${data.error.message || JSON.stringify(data.error)}`);
+  
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("OpenRouter returned an empty response.");
+  
+  return content;
+}
 
-# 📊 Trade Setup: ${data.baseToken.symbol}
-**Network:** ${data.chainId.toUpperCase()}
+function buildAnalysisPrompt(pair: any): string {
+  return `You are Daedalus AI — Elite Technical Analyst.
+Token: ${pair.baseToken.name} (${pair.baseToken.symbol}) on ${pair.chainId.toUpperCase()}
+Price: $${pair.priceUsd}
+24h Vol: $${pair.volume.h24}
+24h Price Change: ${pair.priceChange.h24}%
 
-## 📈 Technical Analysis
-- **Trend Analysis**: Analyze the price action based on the % changes.
-- **Momentum**: Analyze the volume and liquidity distribution.
-- **Key Levels**: 3 estimated support and resistance levels based on common price patterns.
+Analyze the current setup. Format:
+# 📉 Trade Suggestion: ${pair.baseToken.symbol}
+**Market Setup:** (Bullish/Bearish/Neutral)
 
-## 🎯 Trade Suggestion
-- **Direction**: BULLISH / BEARISH / NEUTRAL
-- **Entry Zone**: Recommended entry price.
-- **Take Profit Targets**: TP1, TP2, TP3.
-- **Stop Loss**: Recommended SL level with invalidation reasoning.
+## 📊 Technical Analysis
+Analyze Price Action, Volume, and Trend Velocity.
 
-## 🛡️ Risk/Reward Ratio
-Calculate the R/R for this setup.
+## 🎯 Proposed Trade Setups
+1. **Entry Range**: Specific price levels.
+2. **Targets**: T1, T2 (conservative & aggressive).
+3. **Stop Loss**: Mandatory invalidation level.
 
-## 💡 Strategy Notes
-Provide 3-5 specific notes on how to trade this setup (trailing stop, scaling in, catalysts to watch).
+## 💡 Strategist Notes
+Reasoning behind the setup.
 
----
-⚠️ Disclaimer: Not financial advice. Technical setups can fail instantly. Always use proper risk management.`;
+⚠️ Disclaimer: Not financial advice.`;
 }
 
 export async function executeJob(request: any): Promise<ExecuteJobResult> {
   const token = request.token;
-  const timeframe = request.timeframe || "4h";
-
-  console.log(`[analysis_trade_suggestion] Generating trade setup for ${token} | timeframe=${timeframe}`);
-
-  const pair = await getDexScreenerData(token);
-  if (!pair) return { deliverable: `Error: Could not find token ${token} for analysis.` };
-
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  const model = process.env.OPENROUTER_MODEL || "google/gemini-3-flash-preview";
-
-  if (!apiKey) return { deliverable: "Error: OPENROUTER_API_KEY not set." };
+  console.log(`[analysis_trade_suggestion] Analyzing ${token}`);
 
   try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://virtuals.io",
-        "X-Title": "Daedalus AI Trade Suggestion",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: buildPrompt(pair, timeframe) }],
-      }),
-    });
-    const data = await response.json() as any;
-    return { deliverable: data.choices?.[0]?.message?.content || "Error generating analysis." };
+    const pair = await getDexScreenerData(token);
+    if (!pair) {
+      return { deliverable: `Error: Token "${token}" not found on DexScreener.` };
+    }
+
+    const deliverable = await callOpenRouter(buildAnalysisPrompt(pair));
+    return { deliverable };
   } catch (err: any) {
-    return { deliverable: `Error: ${err.message}` };
+    console.error(`[analysis_trade_suggestion] Error: ${err.message}`);
+    return { deliverable: `⚠️ Error: ${err.message}` };
   }
 }
 
 export function validateRequirements(request: any): ValidationResult {
-  if (!request.token) return { valid: false, reason: "A 'token' ticker or address is required." };
+  if (!request.token) return { valid: false, reason: "A token symbol or address is required." };
   return { valid: true };
 }
 
 export function requestPayment(request: any): string {
-  return `Analyzing trade setup for ${request.token}...`;
+  return `Generating trade setup for ${request.token}...`;
 }

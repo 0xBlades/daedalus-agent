@@ -1,91 +1,79 @@
 import type { ExecuteJobResult, ValidationResult } from "../../../runtime/offeringTypes.js";
 
+async function callOpenRouter(prompt: string): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  const model = process.env.OPENROUTER_MODEL || "anthropic/claude-3.5-haiku";
+
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY is not set.");
+
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://virtuals.io",
+      "X-Title": "Daedalus AI Market Intelligence",
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+    }),
+  });
+
+  const data = await response.json() as any;
+  if (data.error) throw new Error(`OpenRouter Error: ${data.error.message || JSON.stringify(data.error)}`);
+  
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("OpenRouter returned an empty response.");
+  
+  return content;
+}
+
 function buildPrompt(topic: string, questions?: string): string {
-  return `You are Daedalus AI — the world's most advanced crypto intelligence analyst.
+  return `You are Daedalus AI — Elite Crypto Intelligence Analyst.
+Report requested for: **${topic}**
+Specific inquiries: ${questions || "Full market deep-dive."}
 
-Your task is to provide a MASTER-LEVEL Market Intelligence Report on: **${topic.toUpperCase()}**
-${questions ? `Special Focus Areas: ${questions}` : ""}
+Provide a high-fidelity intelligence report. Format:
+# 🏛️ Market Intelligence: ${topic}
+**Executive Summary**
 
-Structure your report into these deep-dive sections:
+## 🗺️ Ecosystem & Market Landscape
+Analyze the project/ticker position, liquidity depth, and narrative fit.
 
----
+## 🕵️ On-Chain Intelligence
+Track Smart Money flows, holder distribution, and recent whale activity.
 
-# 🛸 Market Intelligence Report: ${topic.toUpperCase()}
-*Final Assessment Status: COMPLETED*
+## 🛡️ Risk & Security Audit
+Analyze potential vulnerabilities, developer history, and contract robustness.
 
-## 🏛️ Ecosystem High-Level Overview
-A strategic summary of the project/narrative, its standing in the current cycle, and its core value proposition.
+## 🏛️ Architect's Conclusion
+Final verdict on the project's long-term sustainability vs. short-term momentum.
 
-## 📊 Deep On-Chain Intelligence
-- **Whale & Smart Money Tracking**: Recent notable wallet movements.
-- **Liquidity Depth & Health**: Concentration risks and venue distribution.
-- **Supply Analysis**: Vesting schedules, emissions, and holder distribution.
-
-## 📉 Quantitative Analysis (Technical & Price)
-- **Macro Trend**: Higher timeframe price action overview.
-- **Momentum Strength**: Volume/Price correlation.
-- **Trade Setups**: Optimal accumulation zones and exit targets.
-
-## 💭 Narrative & Sentiment Intelligence
-- **Mindshare Ranking**: How loud is the social chatter?
-- **Community Health**: Sentiment trends on X/Telegram.
-- **Narrative Catalysts**: Upcoming events or news that will drive movement.
-
-## 🛡️ Due Diligence & Security Score
-- **Contract Safety**: Brief highlight of technical risks.
-- **Reputation**: Team/Founder/Deployer track record.
-
-## 🎯 Daedalus Final Alpha Verdict
-- **Intelligence Score**: [X]/100
-- **Primary Catalyst**: The single biggest reason for upside.
-- **Primary Risk**: The single biggest reason for downside.
-- **Recommendation**: Institutional-grade summary (Accumulate / Hold / Reduce / Avoid).
-
-## 💡 Strategic Action Plan
-3-5 specific, high-conviction moves for a portfolio manager.
-
----
-⚠️ Disclaimer: Not financial advice. Intelligence is based on complex data patterns and AI inference. Trade responsibly.`;
+⚠️ Disclaimer: Not financial advice.`;
 }
 
 export async function executeJob(request: any): Promise<ExecuteJobResult> {
-  const topic = request.topic || "Unknown";
-  const questions = request.custom_questions;
+  const topic = request.topic || "Base Ecosystem";
+  const questions = request.specific_questions;
 
-  console.log(`[market_intelligence] Generating master intelligence for "${topic}"`);
-
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  const model = process.env.OPENROUTER_MODEL || "google/gemini-3-flash-preview";
-
-  if (!apiKey) return { deliverable: "Error: OPENROUTER_API_KEY not set." };
+  console.log(`[market_intelligence] Analyzing ${topic}`);
 
   try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://virtuals.io",
-        "X-Title": "Daedalus AI Market Intelligence",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: buildPrompt(topic, questions) }],
-        max_tokens: 3000,
-      }),
-    });
-    const data = await response.json() as any;
-    return { deliverable: data.choices?.[0]?.message?.content || "Error generating intelligence report." };
+    const deliverable = await callOpenRouter(buildPrompt(topic, questions));
+    return { deliverable };
   } catch (err: any) {
-    return { deliverable: `Error: ${err.message}` };
+    console.error(`[market_intelligence] Error: ${err.message}`);
+    return { deliverable: `⚠️ Error: ${err.message}` };
   }
 }
 
 export function validateRequirements(request: any): ValidationResult {
-  if (!request.topic) return { valid: false, reason: "A 'topic', 'token', or 'narrative' is required for the full intelligence report." };
+  if (!request.topic) return { valid: false, reason: "A topic or token symbol is required." };
   return { valid: true };
 }
 
 export function requestPayment(request: any): string {
-  return `Generating full Daedalus Market Intelligence for ${request.topic}... This may take 30-60 seconds.`;
+  return `Generating premium intelligence report for ${request.topic}...`;
 }

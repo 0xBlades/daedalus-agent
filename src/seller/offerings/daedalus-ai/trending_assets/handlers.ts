@@ -1,66 +1,67 @@
 import type { ExecuteJobResult, ValidationResult } from "../../../runtime/offeringTypes.js";
 
+async function callOpenRouter(prompt: string): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  const model = process.env.OPENROUTER_MODEL || "anthropic/claude-3.5-haiku";
+
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY is not set.");
+
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://virtuals.io",
+      "X-Title": "Daedalus AI Trending Assets",
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+    }),
+  });
+
+  const data = await response.json() as any;
+  if (data.error) throw new Error(`OpenRouter Error: ${data.error.message || JSON.stringify(data.error)}`);
+  
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("OpenRouter returned an empty response.");
+  
+  return content;
+}
+
 function buildPrompt(network: string, timeframe: string): string {
-  return `You are Daedalus AI — an elite market scout.
+  return `You are Daedalus AI — Market Scout.
+Analyze trending crypto assets for: **${network}** (${timeframe}).
 
-Your task is to identify and report the current trending assets and narratives on: **${network.toUpperCase()}**
-Timeframe: **${timeframe}**
-
-Provide a detailed report on market movers in the following format:
-
+Provide a curated list. Format:
 # 🔥 Trending Assets: ${network.toUpperCase()}
-**Period:** ${timeframe}
+Identify top movers based on volume, social buzz, and price breakouts.
 
-## 🚀 Top Trending Tokens
-List 3-5 tokens currently showing high activity. 
-For each (you can use recent market data or known trending narratives if live API is limited):
-- **Token Name**: e.g., $DEGEN, $VIRTUAL, $AERO
-- **Recent Action**: Describe the price move or volume spike.
-- **Why it's Trending**: Catalyst (e.g., new listing, protocol update, social buzz).
-- **Risk Level**: Low / Med / High / Degen.
+## 🚀 Hot Tokens
+List 3-5 trending tickers with brief catalysts.
 
-## 🌊 Top Liquidity Pools/Yield Farms
-List 2-3 trending pools or strategies (e.g., on Uniswap V3 or Aerodrome).
+## 🌊 Emerging Liquidity
+Identify pools or farms seeing massive inflows.
 
-## 📊 Market Narrative
-Describe the dominant theme currently driving the ${network.toUpperCase()} ecosystem (e.g., AI agents, Meme season, RWA, etc.).
+## 🕵️ Scout's Verdict
+Is this a genuine trend or a temporary spike?
 
-## 💡 Scout's Insight
-1-2 hidden gems or upcoming catalysts to watch.
-
----
-⚠️ Disclaimer: Market trends are extremely volatile. Trending tokens can dump instantly. Trade at your own risk.`;
+⚠️ Disclaimer: Not financial advice.`;
 }
 
 export async function executeJob(request: any): Promise<ExecuteJobResult> {
-  const network = request.network || "base";
+  const network = request.network || "Base";
   const timeframe = request.timeframe || "24h";
 
-  console.log(`[trending_assets] Scanning for trends on ${network} | timeframe=${timeframe}`);
-
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  const model = process.env.OPENROUTER_MODEL || "google/gemini-3-flash-preview";
-
-  if (!apiKey) return { deliverable: "Error: OPENROUTER_API_KEY not set." };
+  console.log(`[trending_assets] Scouting ${network}`);
 
   try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://virtuals.io",
-        "X-Title": "Daedalus AI Trending Assets",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: buildPrompt(network, timeframe) }],
-      }),
-    });
-    const data = await response.json() as any;
-    return { deliverable: data.choices?.[0]?.message?.content || "Error generating trend report." };
+    const deliverable = await callOpenRouter(buildPrompt(network, timeframe));
+    return { deliverable };
   } catch (err: any) {
-    return { deliverable: `Error: ${err.message}` };
+    console.error(`[trending_assets] Error: ${err.message}`);
+    return { deliverable: `⚠️ Error: ${err.message}` };
   }
 }
 
@@ -69,5 +70,5 @@ export function validateRequirements(request: any): ValidationResult {
 }
 
 export function requestPayment(request: any): string {
-  return `Scanning ${request.network || "base"} for trending assets...`;
+  return `Scouting trending assets on ${request.network || "Base"}...`;
 }
